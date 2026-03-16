@@ -32,28 +32,19 @@ low, high = get_range_for_difficulty(difficulty)
 st.sidebar.caption(f"Range: {low} to {high}")
 st.sidebar.caption(f"Attempts allowed: {attempt_limit}")
 
-if "secret" not in st.session_state:
+if "difficulty" not in st.session_state or st.session_state.difficulty != difficulty:
+    st.session_state.difficulty = difficulty
     st.session_state.secret = random.randint(low, high)
-
-#FIXME: attempts initalized to 1 instead of 0
-if "attempts" not in st.session_state:
-    st.session_state.attempts = 1
+    st.session_state.attempts = 0
+    st.session_state.status = "playing"
+    st.session_state.history = []
 
 if "score" not in st.session_state:
     st.session_state.score = 0
 
-if "status" not in st.session_state:
-    st.session_state.status = "playing"
-
-if "history" not in st.session_state:
-    st.session_state.history = []
-
 st.subheader("Make a guess")
 
-st.info(
-    f"Guess a number between 1 and 100. "
-    f"Attempts left: {attempt_limit - st.session_state.attempts}"
-)
+info_placeholder = st.empty()
 
 with st.expander("Developer Debug Info"):
     st.write("Secret:", st.session_state.secret)
@@ -62,23 +53,26 @@ with st.expander("Developer Debug Info"):
     st.write("Difficulty:", difficulty)
     st.write("History:", st.session_state.history)
 
-raw_guess = st.text_input(
-    "Enter your guess:",
-    key=f"guess_input_{difficulty}"
-)
-
-col1, col2, col3 = st.columns(3)
-with col1:
-    submit = st.button("Submit Guess 🚀")
-with col2:
-    new_game = st.button("New Game 🔁")
-with col3:
-    show_hint = st.checkbox("Show hint", value=True)
+with st.form("guess_form"):
+    raw_guess = st.text_input(
+        "Enter your guess:",
+        key=f"guess_input_{difficulty}",
+        placeholder="Enter your guess...",
+    )
+    col_submit, col_new, col_hint = st.columns([2, 2, 3])
+    with col_submit:
+        submit = st.form_submit_button("Submit Guess 🚀")
+    with col_new:
+        new_game = st.form_submit_button("New Game 🔁")
+    with col_hint:
+        show_hint = st.checkbox("Show hint", value=True)
 
 #Fix Me. New Game button logic breaks around here 
 if new_game:
     st.session_state.attempts = 0
-    st.session_state.secret = random.randint(1, 100)
+    st.session_state.secret = random.randint(low, high)
+    st.session_state.status = "playing"
+    st.session_state.history = []
     st.success("New game started.")
     st.rerun()
 
@@ -88,9 +82,15 @@ if st.session_state.status != "playing":
     else:
         st.error("Game over. Start a new game to try again.")
     st.stop()
-#FIXME : game begins counting one attempt that never happened
 if submit:
     st.session_state.attempts += 1
+
+info_placeholder.info(
+    f"Guess a number between {low} and {high}. "
+    f"Attempts left: {attempt_limit - st.session_state.attempts}"
+)
+
+if submit:
 
     ok, guess_int, err = parse_guess(raw_guess)
 
@@ -100,12 +100,7 @@ if submit:
     else:
         st.session_state.history.append(guess_int)
 
-        if st.session_state.attempts % 2 == 0:
-            secret = str(st.session_state.secret)
-        else:
-            secret = st.session_state.secret
-
-        outcome = check_guess(guess_int, secret)
+        outcome = check_guess(guess_int, st.session_state.secret)
 
         # Map outcome to user-facing hint messages (fixed directions)
         if outcome == "Win":
