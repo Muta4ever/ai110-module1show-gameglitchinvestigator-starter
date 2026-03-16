@@ -9,8 +9,8 @@ Answer each question in 3 to 5 sentences. Be specific and honest about what actu
   (for example: "the secret number kept changing" or "the hints were backwards").
 
   1. Hints were backwards. When it was supposed to say "Go lower", It actually said "Go higher" and vice versa 
-  2. After clicking the "New game" button, game actually never restarts.
-  3. In game attempts dont match actual allowed attempts
+  2. After clicking the "New game" button, game actually never restarts. 
+  3. In game attempts don't match actual allowed attempts. So for the normal mode, instead of 8, you were only allowed 8
 
 ---
 
