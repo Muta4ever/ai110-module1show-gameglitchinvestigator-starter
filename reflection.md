@@ -8,6 +8,10 @@ Answer each question in 3 to 5 sentences. Be specific and honest about what actu
 - List at least two concrete bugs you noticed at the start  
   (for example: "the secret number kept changing" or "the hints were backwards").
 
+  1. Hints were backwards. When it was supposed to say "Go lower", It actually said "Go higher" and vice versa 
+  2. After clicking the "New game" button, game actually never restarts.
+  3. In game attempts dont match actual allowed attempts
+
 ---
 
 ## 2. How did you use AI as a teammate?
