@@ -1,68 +1,11 @@
 import random
 import streamlit as st
-
-def get_range_for_difficulty(difficulty: str):
-    if difficulty == "Easy":
-        return 1, 20
-    if difficulty == "Normal":
-        return 1, 100
-    if difficulty == "Hard":
-        return 1, 50
-    return 1, 100
-
-
-def parse_guess(raw: str):
-    if raw is None:
-        return False, None, "Enter a guess."
-
-    if raw == "":
-        return False, None, "Enter a guess."
-
-    try:
-        if "." in raw:
-            value = int(float(raw))
-        else:
-            value = int(raw)
-    except Exception:
-        return False, None, "That is not a number."
-
-    return True, value, None
-
-
-def check_guess(guess, secret):
-    if guess == secret:
-        return "Win", "🎉 Correct!"
-
-    try:
-        if guess > secret:
-            return "Too High", "📈 Go HIGHER!"
-        else:
-            return "Too Low", "📉 Go LOWER!"
-    except TypeError:
-        g = str(guess)
-        if g == secret:
-            return "Win", "🎉 Correct!"
-        if g > secret:
-            return "Too High", "📈 Go HIGHER!"
-        return "Too Low", "📉 Go LOWER!"
-
-
-def update_score(current_score: int, outcome: str, attempt_number: int):
-    if outcome == "Win":
-        points = 100 - 10 * (attempt_number + 1)
-        if points < 10:
-            points = 10
-        return current_score + points
-
-    if outcome == "Too High":
-        if attempt_number % 2 == 0:
-            return current_score + 5
-        return current_score - 5
-
-    if outcome == "Too Low":
-        return current_score - 5
-
-    return current_score
+from logic_utils import (
+    check_guess,
+    get_range_for_difficulty,
+    parse_guess,
+    update_score,
+)
 
 st.set_page_config(page_title="Glitchy Guesser", page_icon="🎮")
 
@@ -92,6 +35,7 @@ st.sidebar.caption(f"Attempts allowed: {attempt_limit}")
 if "secret" not in st.session_state:
     st.session_state.secret = random.randint(low, high)
 
+#FIXME: attempts initalized to 1 instead of 0
 if "attempts" not in st.session_state:
     st.session_state.attempts = 1
 
@@ -131,6 +75,7 @@ with col2:
 with col3:
     show_hint = st.checkbox("Show hint", value=True)
 
+#Fix Me. New Game button logic breaks around here 
 if new_game:
     st.session_state.attempts = 0
     st.session_state.secret = random.randint(1, 100)
@@ -143,7 +88,7 @@ if st.session_state.status != "playing":
     else:
         st.error("Game over. Start a new game to try again.")
     st.stop()
-
+#FIXME : game begins counting one attempt that never happened
 if submit:
     st.session_state.attempts += 1
 
@@ -160,7 +105,17 @@ if submit:
         else:
             secret = st.session_state.secret
 
-        outcome, message = check_guess(guess_int, secret)
+        outcome = check_guess(guess_int, secret)
+
+        # Map outcome to user-facing hint messages (fixed directions)
+        if outcome == "Win":
+            message = "🎉 Correct!"
+        elif outcome == "Too High":
+            # Guess is higher than the secret, so tell the user to go lower
+            message = "📉 Go LOWER!"
+        else:
+            # Guess is lower than the secret, so tell the user to go higher
+            message = "📈 Go HIGHER!"
 
         if show_hint:
             st.warning(message)
