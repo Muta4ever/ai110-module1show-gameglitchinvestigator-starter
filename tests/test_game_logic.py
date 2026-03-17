@@ -147,3 +147,62 @@ def test_attempts_start_at_zero_means_first_guess_is_attempt_1():
     attempts_after_submit = initial_attempts + 1
     score = update_score(0, "Win", attempts_after_submit)
     assert score == 80  # Not 70 (which would happen if first guess were attempt 2)
+
+
+# ---------------------------------------------------------------------------
+# Edge case inputs
+# Edge case 1: Extremely large number
+#   "99999999" parses successfully and counts as a real guess even though it is
+#   way outside any difficulty range. The game should not crash — parse_guess
+#   returns ok=True and check_guess should still return a valid outcome.
+# ---------------------------------------------------------------------------
+
+def test_parse_extremely_large_number():
+    # Should parse without error — no upper-bound validation in parse_guess
+    ok, value, err = parse_guess("99999999")
+    assert ok is True
+    assert value == 99999999
+    assert err is None
+
+def test_check_guess_extremely_large_number_is_too_high():
+    # A huge guess against any realistic secret should come back "Too High"
+    assert check_guess(99999999, 50) == "Too High"
+
+
+# ---------------------------------------------------------------------------
+# Edge case 2: Scientific notation with a decimal point
+#   "2.5e2" contains "." so parse_guess takes the float branch:
+#   int(float("2.5e2")) = 250.  The user silently gets a valid guess of 250.
+#   "1e3" has no "." so int("1e3") raises ValueError → "That is not a number."
+#   These two forms behave inconsistently — both tests document the current behaviour.
+# ---------------------------------------------------------------------------
+
+def test_parse_scientific_notation_with_dot_is_accepted():
+    # "2.5e2" hits the float branch and becomes 250
+    ok, value, _ = parse_guess("2.5e2")
+    assert ok is True
+    assert value == 250
+
+def test_parse_scientific_notation_without_dot_is_rejected():
+    # "1e3" has no dot, so int("1e3") raises → treated as non-numeric
+    ok, _, err = parse_guess("1e3")
+    assert ok is False
+    assert err == "That is not a number."
+
+
+# ---------------------------------------------------------------------------
+# Edge case 3: Negative decimal
+#   "-3.7" contains "." so parse_guess returns int(float("-3.7")) = -3.
+#   The value is accepted as a valid guess even though -3 is outside every
+#   difficulty range (all ranges start at 1).
+# ---------------------------------------------------------------------------
+
+def test_parse_negative_decimal_truncates_toward_zero():
+    # "-3.7" → int(float("-3.7")) = -3
+    ok, value, _ = parse_guess("-3.7")
+    assert ok is True
+    assert value == -3
+
+def test_check_guess_negative_value_is_too_low():
+    # -3 is below any valid secret, so outcome should be "Too Low"
+    assert check_guess(-3, 1) == "Too Low"

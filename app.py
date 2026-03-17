@@ -32,6 +32,8 @@ low, high = get_range_for_difficulty(difficulty)
 st.sidebar.caption(f"Range: {low} to {high}")
 st.sidebar.caption(f"Attempts allowed: {attempt_limit}")
 
+# FIX 7: AI suggested tracking difficulty in session_state and comparing on each rerun.
+# Verified by switching difficulty mid-game — secret and attempts now reset immediately without a page refresh.
 if "difficulty" not in st.session_state or st.session_state.difficulty != difficulty:
     st.session_state.difficulty = difficulty
     st.session_state.secret = random.randint(low, high)
@@ -42,9 +44,16 @@ if "difficulty" not in st.session_state or st.session_state.difficulty != diffic
 if "score" not in st.session_state:
     st.session_state.score = 0
 
+metrics_cols = st.columns(3)
+score_placeholder = metrics_cols[0].empty()
+attempts_metric_placeholder = metrics_cols[1].empty()
+diff_placeholder = metrics_cols[2].empty()
+diff_placeholder.metric("Difficulty", difficulty)
+
 st.subheader("Make a guess")
 
 info_placeholder = st.empty()
+progress_placeholder = st.empty()
 
 with st.expander("Developer Debug Info"):
     st.write("Secret:", st.session_state.secret)
@@ -53,6 +62,8 @@ with st.expander("Developer Debug Info"):
     st.write("Difficulty:", difficulty)
     st.write("History:", st.session_state.history)
 
+# FIX 4: AI suggested wrapping input and submit in st.form so Streamlit batches them into one rerun.
+# Verified by typing a guess and clicking Submit once — guess is now recorded on the first click.
 with st.form("guess_form"):
     raw_guess = st.text_input(
         "Enter your guess:",
@@ -67,7 +78,8 @@ with st.form("guess_form"):
     with col_hint:
         show_hint = st.checkbox("Show hint", value=True)
 
-#Fix Me. New Game button logic breaks around here 
+# FIX 2: AI identified that status and history were never reset on new game, so st.stop() fired immediately after rerun.
+# Verified by winning a game, clicking New Game, and confirming the game is playable again without freezing.
 if new_game:
     st.session_state.attempts = 0
     st.session_state.secret = random.randint(low, high)
@@ -82,13 +94,32 @@ if st.session_state.status != "playing":
     else:
         st.error("Game over. Start a new game to try again.")
     st.stop()
+# FIX 8: AI suggested moving attempts increment before info render using st.empty() placeholder.
+# Verified by pressing Submit — counter now decreases immediately on the same interaction, not the next one.
 if submit:
     st.session_state.attempts += 1
 
-info_placeholder.info(
-    f"Guess a number between {low} and {high}. "
-    f"Attempts left: {attempt_limit - st.session_state.attempts}"
-)
+attempts_left = attempt_limit - st.session_state.attempts
+info_placeholder.info(f"Guess a number between {low} and {high}. Attempts left: {attempts_left}")
+score_placeholder.metric("Score", st.session_state.score)
+attempts_metric_placeholder.metric("Attempts Left", attempts_left)
+progress_value = max(0.0, st.session_state.attempts / attempt_limit)
+progress_placeholder.progress(1.0 - progress_value)
+
+if st.session_state.history:
+    badges = []
+    for g in st.session_state.history:
+        if isinstance(g, int):
+            outcome = check_guess(g, st.session_state.secret)
+            if outcome == "Win":
+                badges.append(f"🟢 {g}")
+            elif outcome == "Too High":
+                badges.append(f"🔴 {g}")
+            else:
+                badges.append(f"🔵 {g}")
+        else:
+            badges.append(f"⚪ {g}")
+    st.caption("Guess history: " + "  →  ".join(badges))
 
 if submit:
 
@@ -102,14 +133,13 @@ if submit:
 
         outcome = check_guess(guess_int, st.session_state.secret)
 
-        # Map outcome to user-facing hint messages (fixed directions)
+        # FIX 1: AI corrected the outcome-to-message mapping — "Too High" means guess > secret, so tell player to go lower.
+        # Verified by guessing above and below the secret and confirming the arrow directions match the hint.
         if outcome == "Win":
             message = "🎉 Correct!"
         elif outcome == "Too High":
-            # Guess is higher than the secret, so tell the user to go lower
             message = "📉 Go LOWER!"
         else:
-            # Guess is lower than the secret, so tell the user to go higher
             message = "📈 Go HIGHER!"
 
         if show_hint:
